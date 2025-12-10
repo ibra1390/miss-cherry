@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
-import { Sparkles, ArrowRight, Mail, Lock, Loader } from 'lucide-react'
+import { Sparkles, ArrowRight, Mail, Lock, Loader2 } from 'lucide-react'
 
 export default function Login() {
   const [isRegistering, setIsRegistering] = useState(false)
@@ -19,6 +19,9 @@ export default function Login() {
     setErrorMsg('')
 
     try {
+      // CAMBIO 2: Agregamos un retraso de 2 segundos para apreciar el spinner cute
+      await new Promise(resolve => setTimeout(resolve, 2000))
+
       let result
       if (isRegistering) {
         result = await signUp({ email, password })
@@ -36,10 +39,7 @@ export default function Login() {
   }
 
   return (
-    // CAMBIOS DE LAYOUT:
-    // 1. 'min-h-screen': Ocupa toda la pantalla.
-    // 2. '-mt-24 md:-mt-32': Sube el fondo para tapar el hueco blanco del Navbar.
-    // 3. 'pt-24 md:pt-32': Baja el contenido para que no quede tapado.
+    // CAMBIOS DE LAYOUT (MANTENIDOS IGUAL):
     <div className="min-h-screen flex items-center justify-center bg-cherry-bg/50 px-4 relative overflow-hidden -mt-24 md:-mt-32 pt-24 md:pt-32">
       
       {/* --- TU DECORACIÓN ORIGINAL --- */}
@@ -65,14 +65,14 @@ export default function Login() {
         {/* Mensaje de Error */}
         {errorMsg && (
           <div className="mb-6 p-3 bg-red-50 border border-red-100 text-red-400 text-sm rounded-xl font-bold font-body animate-pulse">
-            ⚠️ {errorMsg}
+            {errorMsg}
           </div>
         )}
 
         {/* Formulario */}
         <form onSubmit={handleSubmit} className="space-y-5 text-left">
           
-          {/* INPUT CORREO CUTE */}
+          {/* INPUT CORREO  */}
           <div className="group">
             <label className="block text-xs font-bold text-cherry-pink uppercase tracking-wider mb-2 ml-4">Tu Correo</label>
             <div className="relative transition-all group-focus-within:scale-105">
@@ -90,7 +90,7 @@ export default function Login() {
             </div>
           </div>
 
-          {/* INPUT PASSWORD CUTE */}
+          {/* INPUT PASSWORD  */}
           <div className="group">
             <label className="block text-xs font-bold text-cherry-pink uppercase tracking-wider mb-2 ml-4">Contraseña</label>
             <div className="relative transition-all group-focus-within:scale-105">
@@ -108,12 +108,12 @@ export default function Login() {
             </div>
           </div>
 
-          {/* BOTÓN (TU ESTILO ORIGINAL, SOLO CAMBIÉ MT-6 A MT-8) */}
+          {/* BOTÓN CON SPINNER */}
           <button 
             disabled={loading}
-            className="w-full bg-cherry-red text-white font-kawaii text-2xl py-3 rounded-2xl shadow-lg shadow-pink-200 hover:bg-pink-400 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 mt-8 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-cherry-red text-white font-kawaii text-2xl py-3 rounded-2xl shadow-lg shadow-pink-200 hover:bg-pink-400 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 mt-8 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
-            {loading ? <Loader className="animate-spin" /> : (isRegistering ? 'Crear Cuenta' : 'Entrar')}
+            {loading ? <Loader2 className="animate-spin" size={24} /> : (isRegistering ? 'Crear Cuenta' : 'Entrar')}
             {!loading && <ArrowRight size={20} strokeWidth={3} />}
           </button>
 
@@ -125,7 +125,7 @@ export default function Login() {
             {isRegistering ? '¿Ya tienes cuenta?' : '¿Eres nuevo por aquí?'}
             <button 
               onClick={() => setIsRegistering(!isRegistering)}
-              className="text-cherry-red font-bold ml-2 hover:underline hover:text-pink-600 transition decoration-wavy decoration-pink-300 underline-offset-4"
+              className="text-cherry-red font-bold ml-2 hover:underline hover:text-pink-600 transition decoration-wavy decoration-pink-300 underline-offset-4 cursor-pointer"
             >
               {isRegistering ? 'Inicia Sesión' : 'Regístrate Gratis'}
             </button>

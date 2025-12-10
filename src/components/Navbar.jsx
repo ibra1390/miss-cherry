@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { ShoppingBag, User, Menu, X, Heart, LogOut, ChevronDown, LayoutDashboard } from 'lucide-react'
+import Loader from './ui/Loader' // <--- 1. IMPORTAMOS TU LOADER (El del GIF)
 
 export default function Navbar() {
   const { user, signOut } = useAuth()
@@ -11,6 +12,10 @@ export default function Navbar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false) 
   const userMenuRef = useRef(null)
   const [showToast, setShowToast] = useState(false)
+  
+  // 2. ESTADO PARA SABER SI ESTAMOS CERRANDO SESIÓN
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  
   const navigate = useNavigate()
 
   const handleHeartClick = () => {
@@ -22,10 +27,17 @@ export default function Navbar() {
     }
   }
 
+  // 3. LOGOUT CON EL GIF CUTE
   const handleSignOut = async () => {
-    await signOut()
-    setIsUserMenuOpen(false)
-    navigate('/')
+    setIsUserMenuOpen(false) // Cerramos el menú
+    setIsLoggingOut(true)    // Activamos el GIF
+    
+    // Esperamos 2 segundos para que se vea el loader bonito
+    setTimeout(async () => {
+        await signOut()
+        setIsLoggingOut(false)
+        navigate('/')
+    }, 2000)
   }
 
   useEffect(() => {
@@ -40,6 +52,13 @@ export default function Navbar() {
 
   return (
     <>
+      {/* 4. PANTALLA DE CARGA (OVERLAY) */}
+      {isLoggingOut && (
+        <div className="fixed inset-0 z-[9999] bg-white">
+          <Loader />
+        </div>
+      )}
+
       {/* Toast Notificación */}
       <div className={`fixed top-8 left-1/2 transform -translate-x-1/2 z-[70] transition-all duration-500 pointer-events-none ${showToast ? 'translate-y-0 opacity-100' : '-translate-y-20 opacity-0'}`}>
         <div className="bg-white/90 backdrop-blur-md text-cherry-red px-6 py-3 rounded-full shadow-xl shadow-pink-200/50 flex items-center gap-3 border-2 border-cherry-pink">
@@ -58,7 +77,6 @@ export default function Navbar() {
                 <button className="text-cherry-red bg-cherry-bg p-2.5 rounded-full hover:bg-cherry-pink hover:text-white transition-all" onClick={() => setIsMenuOpen(!isMenuOpen)}>
                   {isMenuOpen ? <X size={22} strokeWidth={3} /> : <Menu size={22} strokeWidth={3} />}
                 </button>
-                {/* Favoritos móvil (Mini) */}
                 <button onClick={handleHeartClick} className="text-cherry-red bg-cherry-bg p-2.5 rounded-full hover:bg-cherry-pink hover:text-white transition-all">
                   <Heart size={20} strokeWidth={2.5} className={user ? "fill-cherry-red" : ""} />
                 </button>
@@ -97,19 +115,19 @@ export default function Navbar() {
               {/* Usuario Dropdown */}
               {user ? (
                 <div className="relative" ref={userMenuRef}>
-                   <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} className="flex items-center gap-2 bg-cherry-bg px-2 py-1.5 pl-3 rounded-full border border-cherry-pink/30 hover:border-cherry-pink transition-colors group cursor-pointer">
+                    <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} className="flex items-center gap-2 bg-cherry-bg px-2 py-1.5 pl-3 rounded-full border border-cherry-pink/30 hover:border-cherry-pink transition-colors group cursor-pointer">
                       <span className="text-sm font-bold font-body text-cherry-dark hidden md:block lowercase first-letter:uppercase truncate max-w-[100px]">{user.email.split('@')[0]}</span>
                       <div className="bg-white text-cherry-pink group-hover:text-cherry-red rounded-full p-1 w-6 h-6 flex items-center justify-center transition-all shadow-sm"><User size={14} strokeWidth={3} /></div>
                       <ChevronDown size={14} className={`text-cherry-dark transition-transform duration-300 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
-                   </button>
-                   
-                   {/* Dropdown Menu */}
-                   {isUserMenuOpen && (
+                    </button>
+                    
+                    {/* Dropdown Menu */}
+                    {isUserMenuOpen && (
                     <div className="absolute right-0 top-full mt-2 w-48 bg-white/95 backdrop-blur-xl rounded-2xl border-2 border-cherry-pink shadow-xl shadow-cherry-pink/20 overflow-hidden animate-[fade-in-down_0.2s_ease-out]">
                       <div className="py-2">
                         <Link to="/perfil" className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-cherry-dark hover:bg-cherry-bg hover:text-cherry-red transition-colors" onClick={() => setIsUserMenuOpen(false)}><LayoutDashboard size={18} />Mi Perfil</Link>
                         <div className="h-px bg-cherry-pink/20 mx-4 my-1"></div>
-                        <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors text-left"><LogOut size={18} />Cerrar Sesión</button>
+                        <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors text-left cursor-pointer"><LogOut size={18} />Cerrar Sesión</button>
                       </div>
                     </div>
                   )}
@@ -132,7 +150,7 @@ export default function Navbar() {
           {isMenuOpen && (
             <div className="md:hidden mt-2 pt-4 border-t-2 border-dashed border-pink-100 flex flex-col gap-3 text-center text-gray-500 font-kawaii animate-fade-in-down">
               {['Inicio', 'Tienda', 'Nosotros'].map((item) => (
-                 <Link key={item} to={item === 'Inicio' ? '/' : `/${item.toLowerCase()}`} className="hover:text-cherry-red hover:bg-cherry-bg rounded-xl py-2 transition text-2xl" onClick={() => setIsMenuOpen(false)}>{item}</Link>
+                  <Link key={item} to={item === 'Inicio' ? '/' : `/${item.toLowerCase()}`} className="hover:text-cherry-red hover:bg-cherry-bg rounded-xl py-2 transition text-2xl" onClick={() => setIsMenuOpen(false)}>{item}</Link>
               ))}
               {user && <Link to="/perfil" className="hover:text-cherry-red hover:bg-cherry-bg rounded-xl py-2 transition text-2xl" onClick={() => setIsMenuOpen(false)}>Mi Perfil</Link>}
             </div>
