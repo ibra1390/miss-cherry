@@ -1,79 +1,20 @@
-import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext' 
-// 1. IMPORTAMOS EL CONTEXTO DE TOAST
-import { useToast } from '../context/ToastContext'
+// Importamos nuestro nuevo Hook
+import { useOrder } from '../hooks/useOrder' 
 import { Trash2, Plus, Minus, MessageCircle, ShoppingBag, Loader2, CheckCircle, ArrowRight, Package } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../utils/supabase'
 import { formatPrice } from '../utils/format'
 
 export default function Cart() {
   const { user } = useAuth()
-  const { cart, loading, removeFromCart, updateQuantity, fetchCart } = useCart() 
-  // 2. USAMOS EL HOOK
-  const { showToast } = useToast()
-  
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [orderSuccess, setOrderSuccess] = useState(null)
-
-  const PHONE_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER
+  const { cart, loading, removeFromCart, updateQuantity } = useCart() 
+  // Usamos el hook para la lógica de negocio
+  const { isProcessing, orderSuccess, handleCreateOrder, sendToWhatsapp } = useOrder()
 
   const total = cart.reduce((acc, item) => acc + (item.products.price * item.quantity), 0)
 
-  const handleCreateOrder = async () => {
-    try {
-      setIsProcessing(true)
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({ user_id: user.id, total: total, status: 'pendiente' })
-        .select().single()
-
-      if (orderError) throw orderError
-
-      const orderItems = cart.map(item => ({
-        order_id: orderData.id,
-        product_id: item.products.id,
-        quantity: item.quantity,
-        price: item.products.price
-      }))
-
-      const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
-      if (itemsError) throw itemsError
-
-      await supabase.from('cart_items').delete().eq('user_id', user.id)
-      setOrderSuccess({ id: orderData.id, items: [...cart], total: total })
-      await fetchCart()
-
-      // Opcional: Toast de éxito también (aunque ya tienes la pantalla de éxito)
-      // showToast('¡Pedido creado con éxito!', 'success') 
-
-    } catch (error) {
-      console.error("Error:", error)
-      // 3. REEMPLAZAMOS ALERT POR TOAST
-      // Asegúrate de que tu Toast soporte el tipo 'error' o usa uno genérico
-      showToast('Hubo un error al crear tu pedido', 'error')
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  const sendToWhatsapp = () => {
-    if (!orderSuccess) return
-    let message = `Hola! 🎀 Quiero reservar mi pedido #${orderSuccess.id}\n\n`
-    message += `📋 *Detalles:*\n`
-    orderSuccess.items.forEach(item => {
-      message += `▫️ ${item.quantity}x ${item.products.name} - ${formatPrice(item.products.price * item.quantity)}\n`
-    })
-    message += `\n💰 *Subtotal productos: ${formatPrice(orderSuccess.total)}*\n`
-    message += `📦 *Envío:* Por acordar\n` 
-    message += `\nQuedo pendiente para coordinar envío y pago. Gracias! ✨`
-    
-    const url = `https://wa.me/${PHONE_NUMBER}?text=${encodeURIComponent(message)}`
-    window.open(url, '_blank')
-  }
-
-  // --- VISTAS ---
+  // --- VISTAS (Igual que antes, solo que el código está más ordenado) ---
 
   if (loading) return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
@@ -147,29 +88,11 @@ export default function Cart() {
 
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-                  <button 
-                    onClick={() => updateQuantity(item.id, item.quantity, -1)}
-                    disabled={item.quantity <= 1}
-                    className="text-gray-400 hover:text-cherry-red transition-colors cursor-pointer"
-                  >
-                    <Minus size={16} />
-                  </button>
+                  <button onClick={() => updateQuantity(item.id, item.quantity, -1)} disabled={item.quantity <= 1} className="text-gray-400 hover:text-cherry-red transition-colors cursor-pointer"><Minus size={16} /></button>
                   <span className="font-bold w-4 text-center text-gray-700">{item.quantity}</span>
-                  <button 
-                    onClick={() => updateQuantity(item.id, item.quantity, 1)}
-                    className="text-gray-400 hover:text-cherry-red transition-colors cursor-pointer"
-                  >
-                    <Plus size={16} />
-                  </button>
+                  <button onClick={() => updateQuantity(item.id, item.quantity, 1)} className="text-gray-400 hover:text-cherry-red transition-colors cursor-pointer"><Plus size={16} /></button>
                 </div>
-
-                <button 
-                  onClick={() => removeFromCart(item.id)}
-                  className="p-2 text-gray-300 hover:text-red-400 transition-colors cursor-pointer"
-                  title="Eliminar"
-                >
-                  <Trash2 size={20} />
-                </button>
+                <button onClick={() => removeFromCart(item.id)} className="p-2 text-gray-300 hover:text-red-400 transition-colors cursor-pointer" title="Eliminar"><Trash2 size={20} /></button>
               </div>
             </div>
           ))}
@@ -179,25 +102,20 @@ export default function Cart() {
         <div className="lg:col-span-1">
           <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-lg sticky top-28">
             <h3 className="font-kawaii text-3xl text-cherry-dark mb-6">Resumen</h3>
-            
             <div className="space-y-3 mb-8 font-body text-gray-600">
               <div className="flex justify-between items-center">
                 <span>Subtotal</span>
                 <span className="font-bold text-gray-800">{formatPrice(total)}</span>
               </div>
-              
               <div className="flex justify-between items-center text-gray-500 bg-gray-50 p-2 rounded-lg">
                 <span className="flex items-center gap-1 text-sm"><Package size={14}/> Envío</span>
                 <span className="font-bold text-sm text-cherry-pink">Por acordar</span>
               </div>
-
               <div className="border-t border-dashed border-gray-200 pt-4 mt-4 flex justify-between items-center text-2xl font-kawaii text-cherry-dark">
                 <span>Total</span>
                 <span>{formatPrice(total)}</span>
               </div>
-              <p className="text-[10px] text-center text-gray-400">
-                 * El costo de envío se sumará al acordar la entrega.
-              </p>
+              <p className="text-[10px] text-center text-gray-400">* El costo de envío se sumará al acordar la entrega.</p>
             </div>
 
             <button 
