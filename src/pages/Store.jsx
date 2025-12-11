@@ -1,147 +1,126 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../utils/supabase'
-import { useCart } from '../context/CartContext'
-import { Search, ShoppingBag, Check, Loader } from 'lucide-react'
-
-// Categorías "quemadas" en código (luego podríamos sacarlas de la DB si quisieras)
-const CATEGORIES = ["Todas", "Relajante", "Dulce", "Frutal", "Floral"]
+import ProductCard from '../components/ProductCard'
+import { Search, Filter, ArrowUpDown, Ghost } from 'lucide-react'
+// Importamos el hook y las constantes
+import { useProductFilters } from '../hooks/useProductFilters'
+import { CATEGORIES, FRAGRANCES } from '../utils/constants'
 
 export default function Store() {
-  const [products, setProducts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [selectedCategory, setSelectedCategory] = useState("Todas")
-  const [searchTerm, setSearchTerm] = useState("")
-  const [addingId, setAddingId] = useState(null) // Para animación del botón
-
-  const { addToCart } = useCart()
-
-  useEffect(() => {
-    fetchAllProducts()
-  }, [])
-
-  async function fetchAllProducts() {
-    // Traemos TODO sin límite
-    const { data } = await supabase.from('products').select('*')
-    setProducts(data || [])
-    setLoading(false)
-  }
-
-  const handleAdd = async (product) => {
-    setAddingId(product.id)
-    await addToCart(product)
-    setTimeout(() => setAddingId(null), 500)
-  }
-
-  // Lógica de Filtrado (Magia pura ✨)
-  const filteredProducts = products.filter(product => {
-    // 1. Filtro por Categoría
-    const matchesCategory = selectedCategory === "Todas" || product.scent === selectedCategory || product.coleccion === selectedCategory
-    // 2. Filtro por Buscador (Nombre)
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    return matchesCategory && matchesSearch
-  })
+  // Usamos el hook para toda la lógica
+  const { products, loading, filters, updateFilter, clearFilters } = useProductFilters()
 
   return (
-    <div className="min-h-screen bg-white pb-20">
+    <div className="min-h-screen bg-gray-50 pb-20 relative z-0 -mt-24">
       
-      {/* HEADER DE LA TIENDA */}
-      <div className="bg-cherry-bg pt-12 pb-16 px-4 text-center rounded-b-[3rem] mb-12 relative overflow-hidden">
-        {/* Círculo decorativo */}
+      {/* --- HEADER ORIGINAL RESTAURADO (Con ajuste de padding superior) --- */}
+      <div className="bg-cherry-bg pt-40 pb-16 px-4 text-center rounded-b-[3rem] mb-12 relative overflow-hidden shadow-sm">
+        
+        {/* Círculo decorativo original */}
         <div className="absolute top-0 left-0 w-64 h-64 bg-white opacity-40 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
         
         <h1 className="font-kawaii text-6xl text-cherry-dark mb-4 relative z-10">
-          Nuestro Catálogo 🕯️
+          Nuestro Catálogo 
         </h1>
         <p className="font-body text-gray-500 text-lg max-w-xl mx-auto relative z-10">
           Explora todas nuestras creaciones. Usa los filtros para encontrar tu aroma ideal.
         </p>
 
-        {/* BARRA DE BÚSQUEDA */}
+        {/* --- BARRA DE BÚSQUEDA  --- */}
         <div className="max-w-md mx-auto mt-8 relative z-10">
-          <div className="relative">
-            <Search className="absolute left-4 top-3.5 text-cherry-pink" size={24} />
+          <div className="relative group">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2 text-cherry-pink pointer-events-none z-10 group-focus-within:text-cherry-red transition-colors">
+               <Search size={24} />
+            </div>
             <input 
               type="text" 
               placeholder="¿Qué aroma buscas hoy?" 
-              className="w-full pl-12 pr-6 py-3 rounded-full border-2 border-pink-100 focus:border-cherry-pink focus:outline-none font-body text-gray-600 shadow-sm transition-all focus:shadow-md"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-14 pr-6 py-4 rounded-full border-2 border-pink-100 focus:border-cherry-pink focus:outline-none font-body text-gray-600 shadow-sm transition-all focus:shadow-md bg-white/90 backdrop-blur-sm relative z-0"
+              value={filters.search}
+              onChange={(e) => updateFilter('search', e.target.value)}
             />
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-6">
+      <div className="container mx-auto px-4 max-w-7xl">
         
-        {/* FILTROS (Botones Pastilla) */}
-        <div className="flex flex-wrap justify-center gap-3 mb-12">
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-6 py-2 rounded-full font-bold font-kawaii text-2xl transition-all duration-300 border-2 
-                ${selectedCategory === cat 
-                  ? 'bg-cherry-red text-white border-cherry-red shadow-lg shadow-pink-200 scale-105' 
-                  : 'bg-white text-gray-400 border-gray-100 hover:border-pink-200 hover:text-cherry-red'
-                }`}
-            >
-              {cat}
-            </button>
-          ))}
+        {/* --- BARRA DE FILTROS (Esta sí la dejamos nueva porque está más completa) --- */}
+        <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-pink-50 mb-10 relative z-10">
+          <div className="flex flex-col xl:flex-row gap-8 justify-between items-center">
+             
+             {/* A. Categorías (Botones) */}
+             <div className="flex flex-wrap justify-center xl:justify-start gap-2">
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => updateFilter('category', cat)}
+                    className={`px-5 py-2 rounded-full font-bold font-kawaii text-lg transition-all border-2 
+                      ${filters.category === cat 
+                        ? 'bg-cherry-red text-white border-cherry-red shadow-lg shadow-pink-200 transform scale-105' 
+                        : 'bg-gray-50 text-gray-400 border-transparent hover:border-pink-200 hover:text-cherry-red hover:bg-white'
+                      }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+             </div>
+
+             {/* B. Dropdowns (Fragancia y Precio) */}
+             <div className="flex flex-wrap gap-4 w-full xl:w-auto justify-center">
+                {/* Fragancia */}
+                <div className="relative min-w-[220px]">
+                   <div className="absolute left-4 top-3.5 text-cherry-pink pointer-events-none"><Filter size={20} /></div>
+                   <select 
+                      value={filters.fragrance}
+                      onChange={(e) => updateFilter('fragrance', e.target.value)}
+                      className="w-full pl-12 pr-8 py-3 rounded-2xl border-2 border-pink-100 bg-white text-gray-600 font-body font-bold focus:outline-none focus:border-cherry-pink cursor-pointer appearance-none hover:bg-pink-50 transition shadow-sm"
+                   >
+                      {FRAGRANCES.map(f => <option key={f} value={f}>{f === "Todas" ? "Todas las fragancias" : f}</option>)}
+                   </select>
+                </div>
+                {/* Precio */}
+                <div className="relative min-w-[200px]">
+                   <div className="absolute left-4 top-3.5 text-cherry-pink pointer-events-none"><ArrowUpDown size={20} /></div>
+                   <select 
+                      value={filters.priceOrder}
+                      onChange={(e) => updateFilter('priceOrder', e.target.value)}
+                      className="w-full pl-12 pr-8 py-3 rounded-2xl border-2 border-pink-100 bg-white text-gray-600 font-body font-bold focus:outline-none focus:border-cherry-pink cursor-pointer appearance-none hover:bg-pink-50 transition shadow-sm"
+                   >
+                      <option value="default">Precio: Normal</option>
+                      <option value="asc">Menor a Mayor $</option>
+                      <option value="desc">Mayor a Menor $$$</option>
+                   </select>
+                </div>
+             </div>
+          </div>
         </div>
 
-        {/* GRILLA DE PRODUCTOS */}
+        {/* --- RESULTADOS (GRID) --- */}
         {loading ? (
-          <div className="flex justify-center h-40"><Loader className="animate-spin text-cherry-red" size={40} /></div>
+          <div className="flex flex-col items-center justify-center h-80 gap-4 relative z-10">
+             <div className="animate-spin rounded-full h-14 w-14 border-4 border-t-cherry-red border-pink-100"></div>
+             <p className="font-kawaii text-2xl text-gray-400 animate-pulse">Buscando aromas...</p>
+          </div>
+        ) : products.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 relative z-10">
+            {products.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {filteredProducts.length > 0 ? filteredProducts.map((product) => (
-              <div key={product.id} className="group bg-white rounded-[2rem] border border-pink-50 hover:border-pink-200 shadow-sm hover:shadow-xl hover:shadow-pink-100/50 transition-all duration-300 hover:-translate-y-2 overflow-hidden flex flex-col">
-                
-                {/* Imagen */}
-                <div className="relative h-56 overflow-hidden bg-gray-50">
-                  <img src={product.image_url} alt={product.name} className="w-full h-full object-cover transform group-hover:scale-110 transition duration-700"/>
-                  {/* Precio Badge */}
-                  <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm font-kawaii text-xl text-cherry-dark">
-                    ${product.price}
-                  </div>
-                </div>
-
-                {/* Info */}
-                <div className="p-5 text-center flex-grow flex flex-col">
-                  <span className="text-xs font-bold text-cherry-pink uppercase tracking-wider mb-1">
-                    {product.scent || "General"}
-                  </span>
-                  <h3 className="font-kawaii text-3xl text-gray-800 mb-2 leading-none">{product.name}</h3>
-                  <div className="flex-grow"></div> {/* Empuja el botón al fondo */}
-                  
-                  {/* Botón */}
-                  <button 
-                    className={`w-full font-bold py-2 mt-4 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 font-kawaii text-xl tracking-wide
-                      ${addingId === product.id 
-                        ? 'bg-green-100 text-green-600 border-2 border-green-200' 
-                        : 'bg-cherry-bg text-cherry-red border-2 border-cherry-pink hover:bg-cherry-red hover:text-white'
-                      }
-                    `}
-                    onClick={() => handleAdd(product)}
-                    disabled={addingId === product.id}
-                  >
-                     {addingId === product.id ? <Check size={20}/> : <ShoppingBag size={20}/>}
-                     {addingId === product.id ? "¡Listo!" : "Agregar"}
-                  </button>
-                </div>
-              </div>
-            )) : (
-              <div className="col-span-full text-center py-20">
-                <p className="font-kawaii text-4xl text-gray-300">No encontramos velas con ese aroma 😢</p>
-                <button onClick={() => {setSelectedCategory("Todas"); setSearchTerm("")}} className="mt-4 text-cherry-red underline font-bold">
-                  Ver todo de nuevo
-                </button>
-              </div>
-            )}
+          // Empty State
+          <div className="text-center py-20 bg-white rounded-[3rem] border-2 border-dashed border-gray-200 relative z-10">
+             <Ghost size={64} className="text-gray-300 mx-auto mb-4 animate-bounce-slow" />
+             <h3 className="font-kawaii text-3xl text-gray-400 mb-2">Ups, no encontramos nada</h3>
+             <p className="text-gray-400 mb-6 font-body">Intenta cambiar los filtros o busca otro nombre.</p>
+             <button 
+               onClick={clearFilters}
+               className="text-cherry-red font-bold underline hover:text-pink-500 decoration-wavy decoration-2 underline-offset-4"
+             >
+               Limpiar todos los filtros
+             </button>
           </div>
         )}
+
       </div>
     </div>
   )

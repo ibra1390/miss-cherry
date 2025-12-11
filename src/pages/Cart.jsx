@@ -1,92 +1,34 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../utils/supabase'
 import { useAuth } from '../context/AuthContext'
-import { useCart } from '../context/CartContext'
-import { Trash2, Plus, Minus, ArrowRight, ShoppingBag } from 'lucide-react'
+import { useCart } from '../context/CartContext' // <--- Usamos todo desde aquí
+import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Loader2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export default function Cart() {
   const { user } = useAuth()
-  const { fetchCartCount } = useCart() // Para actualizar el numerito rojo al borrar
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [total, setTotal] = useState(0)
+  // Extraemos todo del contexto global
+  const { cart, loading, removeFromCart, updateQuantity } = useCart() 
 
-  useEffect(() => {
-    if (user) getCart()
-  }, [user])
+  // Calculamos el total al vuelo
+  const total = cart.reduce((acc, item) => acc + (item.products.price * item.quantity), 0)
 
-  async function getCart() {
-    try {
-      // Magia de Supabase: Traemos los items Y los datos del producto juntos
-      const { data, error } = await supabase
-        .from('cart_items')
-        .select('*, products(*)') // <--- El * trae todo de cart_items, products(*) une la otra tabla
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+  // VISTA: CARGANDO
+  if (loading) return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+       <Loader2 className="animate-spin text-cherry-pink w-12 h-12" />
+       <p className="font-kawaii text-2xl text-gray-400">Cargando tu bolsa mágica...</p>
+    </div>
+  )
 
-      if (error) throw error
-      setItems(data || [])
-      calculateTotal(data)
-    } catch (error) {
-      console.error('Error cargando carrito:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  function calculateTotal(cartItems) {
-    if (!cartItems) return
-    const sum = cartItems.reduce((acc, item) => {
-      return acc + (item.products.price * item.quantity)
-    }, 0)
-    setTotal(sum)
-  }
-
-  // Función para borrar item
-  async function removeItem(id) {
-    const { error } = await supabase.from('cart_items').delete().eq('id', id)
-    if (!error) {
-      // Actualizamos la lista localmente para que se sienta rápido
-      const newItems = items.filter(item => item.id !== id)
-      setItems(newItems)
-      calculateTotal(newItems)
-      fetchCartCount() // Actualizamos el numerito del navbar
-    }
-  }
-
-  // Función para cambiar cantidad (+ o -)
-  async function updateQuantity(id, currentQty, change) {
-    const newQty = currentQty + change
-    if (newQty < 1) return // No dejar bajar de 1
-
-    const { error } = await supabase
-      .from('cart_items')
-      .update({ quantity: newQty })
-      .eq('id', id)
-
-    if (!error) {
-      // Actualizamos visualmente
-      const newItems = items.map(item => 
-        item.id === id ? { ...item, quantity: newQty } : item
-      )
-      setItems(newItems)
-      calculateTotal(newItems)
-    }
-  }
-
-  if (loading) return <div className="text-center py-20 font-kawaii text-3xl text-gray-400">Cargando tu bolsa mágica... 🪄</div>
-
-  // VISTA: CARRITO VACÍO
-  if (items.length === 0) {
+  // VISTA: VACÍO
+  if (cart.length === 0) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4 pt-20">
         <div className="bg-pink-50 p-8 rounded-full mb-6 animate-float">
           <ShoppingBag size={64} className="text-cherry-pink" />
         </div>
         <h2 className="font-kawaii text-5xl text-cherry-dark mb-4">Tu carrito está vacío ☁️</h2>
         <p className="font-body text-gray-500 mb-8 text-lg">Parece que aún no has elegido tus aromas favoritos.</p>
-        <Link to="/" className="bg-cherry-red text-white px-8 py-3 rounded-full font-bold font-kawaii text-2xl hover:bg-pink-400 transition hover:scale-105 shadow-lg shadow-pink-200">
+        <Link to="/tienda" className="bg-cherry-red text-white px-8 py-3 rounded-full font-bold font-kawaii text-2xl hover:bg-pink-400 transition hover:scale-105 shadow-lg shadow-pink-200">
           Ir a la Tienda
         </Link>
       </div>
@@ -95,16 +37,16 @@ export default function Cart() {
 
   // VISTA: CON PRODUCTOS
   return (
-    <div className="container mx-auto px-4 py-12 max-w-5xl">
+    <div className="container mx-auto px-4 pt-32 pb-20 max-w-5xl min-h-screen">
       <h1 className="font-kawaii text-5xl text-cherry-dark mb-10 text-center md:text-left">
-        Tu Bolsa Mágica ({items.length}) 🛍️
+        Tu Bolsa Mágica ({cart.length}) 🛍️
       </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* LISTA DE ITEMS (Izquierda) */}
+        {/* LISTA DE ITEMS */}
         <div className="lg:col-span-2 space-y-6">
-          {items.map((item) => (
+          {cart.map((item) => (
             <div key={item.id} className="flex gap-4 md:gap-6 bg-white p-4 rounded-[2rem] border border-pink-50 shadow-sm hover:shadow-md transition-all items-center">
               
               {/* Imagen */}
@@ -115,14 +57,16 @@ export default function Cart() {
               {/* Info */}
               <div className="flex-grow">
                 <h3 className="font-kawaii text-2xl md:text-3xl text-gray-800 truncate">{item.products.name}</h3>
-                <p className="font-body text-gray-400 text-sm mb-2">{item.products.scent || "Aroma sorpresa"}</p>
+                <p className="font-body text-gray-400 text-sm mb-2 italic">
+                   {item.products.coleccion || "Clásica"}
+                </p>
                 <p className="font-bold text-cherry-red text-lg">${item.products.price}</p>
               </div>
 
-              {/* Controles (Cantidad y Borrar) */}
+              {/* Controles */}
               <div className="flex flex-col items-end gap-3">
                 <button 
-                  onClick={() => removeItem(item.id)}
+                  onClick={() => removeFromCart(item.id)}
                   className="text-gray-300 hover:text-red-400 p-2 hover:bg-red-50 rounded-full transition"
                 >
                   <Trash2 size={20} />
@@ -150,7 +94,7 @@ export default function Cart() {
           ))}
         </div>
 
-        {/* RESUMEN DE PAGO (Derecha) */}
+        {/* RESUMEN DE PAGO */}
         <div className="lg:col-span-1">
           <div className="bg-white p-8 rounded-[2.5rem] border-2 border-pink-100 shadow-xl shadow-pink-50 sticky top-24">
             <h3 className="font-kawaii text-4xl text-cherry-dark mb-6">Resumen 🧾</h3>

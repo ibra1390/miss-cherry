@@ -1,14 +1,16 @@
-import { useState, useEffect } from 'react' // <--- 1. Agrega estos hooks
+import { useState, useEffect } from 'react' 
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import MainLayout from './layouts/MainLayout'
 import Loader from './components/ui/Loader'
+import Favorites from './pages/Favorites'
+import { ToastProvider } from './context/ToastContext'
 
 // Páginas
 import Cart from './pages/Cart'
 import Store from './pages/Store'
 import Home from './pages/Home'
-import Login from './pages/Login' // Asegúrate que el nombre coincida (Login.jsx)
+import Login from './pages/Login' 
 import Dashboard from './pages/Dashboard'
 
 const ProtectedRoute = ({ children }) => {
@@ -43,31 +45,41 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<MainLayout />}>
-        <Route index element={<Home />} />
-        <Route path="login" element={<Login />} />
-        <Route path="tienda" element={<Store />} />
-        <Route path="catalogo" element={<Store />} />
+    <ToastProvider>
+      <Routes>
+        <Route path="/" element={<MainLayout />}>
+          <Route index element={<Home />} />
+          <Route path="login" element={<Login />} />
+          <Route path="tienda" element={<Store />} />
+          <Route path="catalogo" element={<Store />} />
 
-        <Route 
-          path="dashboard" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="carrito" 
-          element={
-            <ProtectedRoute>
-              <Cart />
-            </ProtectedRoute>
-          } 
-        />
-      </Route>
-    </Routes>
+          <Route 
+            path="dashboard" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="carrito" 
+            element={
+              <ProtectedRoute>
+                <Cart />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="favoritos" 
+            element={
+              <ProtectedRoute>
+                <Favorites />
+              </ProtectedRoute>
+            } 
+          />
+        </Route>
+      </Routes>
+    </ToastProvider>
   )
 }
 
