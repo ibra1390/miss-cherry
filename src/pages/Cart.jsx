@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext' 
+// 1. IMPORTAMOS EL CONTEXTO DE TOAST
+import { useToast } from '../context/ToastContext'
 import { Trash2, Plus, Minus, MessageCircle, ShoppingBag, Loader2, CheckCircle, ArrowRight, Package } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../utils/supabase'
@@ -9,6 +11,8 @@ import { formatPrice } from '../utils/format'
 export default function Cart() {
   const { user } = useAuth()
   const { cart, loading, removeFromCart, updateQuantity, fetchCart } = useCart() 
+  // 2. USAMOS EL HOOK
+  const { showToast } = useToast()
   
   const [isProcessing, setIsProcessing] = useState(false)
   const [orderSuccess, setOrderSuccess] = useState(null)
@@ -17,7 +21,6 @@ export default function Cart() {
 
   const total = cart.reduce((acc, item) => acc + (item.products.price * item.quantity), 0)
 
-  // --- LÓGICA DE ORDEN (Igual que antes) ---
   const handleCreateOrder = async () => {
     try {
       setIsProcessing(true)
@@ -42,9 +45,14 @@ export default function Cart() {
       setOrderSuccess({ id: orderData.id, items: [...cart], total: total })
       await fetchCart()
 
+      // Opcional: Toast de éxito también (aunque ya tienes la pantalla de éxito)
+      // showToast('¡Pedido creado con éxito!', 'success') 
+
     } catch (error) {
       console.error("Error:", error)
-      alert("Hubo un error al crear tu pedido.")
+      // 3. REEMPLAZAMOS ALERT POR TOAST
+      // Asegúrate de que tu Toast soporte el tipo 'error' o usa uno genérico
+      showToast('Hubo un error al crear tu pedido', 'error')
     } finally {
       setIsProcessing(false)
     }
@@ -55,7 +63,6 @@ export default function Cart() {
     let message = `Hola! 🎀 Quiero reservar mi pedido #${orderSuccess.id}\n\n`
     message += `📋 *Detalles:*\n`
     orderSuccess.items.forEach(item => {
-      // Precio limpio
       message += `▫️ ${item.quantity}x ${item.products.name} - ${formatPrice(item.products.price * item.quantity)}\n`
     })
     message += `\n💰 *Subtotal productos: ${formatPrice(orderSuccess.total)}*\n`
@@ -84,7 +91,7 @@ export default function Cart() {
         <h2 className="font-kawaii text-5xl text-cherry-dark mb-4">¡Pedido Creado! 🎉</h2>
         <p className="font-body text-gray-500 mb-8 text-xl max-w-md">
           Tu orden <b>#{orderSuccess.id}</b> ya está registrada.<br/>
-          Envíanos mensaje para coordinar pago y envío.
+          Envíanos mensaje para coordinar el envío.
         </p>
         <button 
           onClick={sendToWhatsapp}
@@ -119,36 +126,31 @@ export default function Cart() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         
-        {/* LISTA DE ITEMS (DISEÑO MÁS LIMPIO) */}
+        {/* LISTA DE ITEMS */}
         <div className="lg:col-span-2 space-y-6">
           {cart.map((item) => (
-            // Quitamos bordes excesivos y sombras fuertes
             <div key={item.id} className="flex flex-col sm:flex-row gap-5 bg-white p-4 rounded-[2rem] border border-gray-100 shadow-sm items-center">
               
-              {/* Imagen simple */}
               <div className="w-full sm:w-28 h-28 flex-shrink-0 bg-gray-50 rounded-2xl overflow-hidden">
                 <img src={item.products.image_url} alt={item.products.name} className="w-full h-full object-cover" />
               </div>
 
-              {/* Info Limpia */}
               <div className="flex-grow flex flex-col justify-center text-center sm:text-left w-full">
                 <h3 className="font-kawaii text-2xl text-gray-800 mb-1">{item.products.name}</h3>
                 <p className="font-body text-gray-400 text-sm mb-1 uppercase tracking-wider">
                    {item.products.coleccion}
                 </p>
-                {/* PRECIO AUTOMÁTICO */}
                 <p className="font-bold text-cherry-red text-xl">
                     {formatPrice(item.products.price)}
                 </p>
               </div>
 
-              {/* Controles Minimalistas */}
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
                   <button 
                     onClick={() => updateQuantity(item.id, item.quantity, -1)}
                     disabled={item.quantity <= 1}
-                    className="text-gray-400 hover:text-cherry-red disabled:opacity-30 transition-colors cursor-pointer"
+                    className="text-gray-400 hover:text-cherry-red transition-colors cursor-pointer"
                   >
                     <Minus size={16} />
                   </button>
@@ -184,7 +186,6 @@ export default function Cart() {
                 <span className="font-bold text-gray-800">{formatPrice(total)}</span>
               </div>
               
-              {/* Lógica de Envío Actualizada */}
               <div className="flex justify-between items-center text-gray-500 bg-gray-50 p-2 rounded-lg">
                 <span className="flex items-center gap-1 text-sm"><Package size={14}/> Envío</span>
                 <span className="font-bold text-sm text-cherry-pink">Por acordar</span>
