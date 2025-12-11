@@ -41,7 +41,7 @@ export default function ProductCard({ product }) {
 
     setIsAdding(true) 
     
-    await new Promise(resolve => setTimeout(resolve, 1500)) 
+    await new Promise(resolve => setTimeout(resolve, 500)) 
     
     const result = await addToCart(product)
     
@@ -115,7 +115,7 @@ export default function ProductCard({ product }) {
         )}
 
         <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm font-kawaii text-xl text-cherry-dark flex items-center gap-1 z-20">
-           <span className="text-cherry-red text-sm">$</span>{formatPrice(product.price)}
+           <span className="text-cherry-red text-sm"></span>{formatPrice(product.price)}
         </div>
       </div>
 

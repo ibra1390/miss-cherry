@@ -1,25 +1,102 @@
+import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useCart } from '../context/CartContext' // <--- Usamos todo desde aquí
-import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Loader2 } from 'lucide-react'
+import { useCart } from '../context/CartContext' 
+import { Trash2, Plus, Minus, MessageCircle, ShoppingBag, Loader2, CheckCircle, ArrowRight, Package } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { supabase } from '../utils/supabase'
+import { formatPrice } from '../utils/format'
 
 export default function Cart() {
   const { user } = useAuth()
-  // Extraemos todo del contexto global
-  const { cart, loading, removeFromCart, updateQuantity } = useCart() 
+  const { cart, loading, removeFromCart, updateQuantity, fetchCart } = useCart() 
+  
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [orderSuccess, setOrderSuccess] = useState(null)
 
-  // Calculamos el total al vuelo
+  const PHONE_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER
+
   const total = cart.reduce((acc, item) => acc + (item.products.price * item.quantity), 0)
 
-  // VISTA: CARGANDO
+  // --- LÓGICA DE ORDEN (Igual que antes) ---
+  const handleCreateOrder = async () => {
+    try {
+      setIsProcessing(true)
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert({ user_id: user.id, total: total, status: 'pendiente' })
+        .select().single()
+
+      if (orderError) throw orderError
+
+      const orderItems = cart.map(item => ({
+        order_id: orderData.id,
+        product_id: item.products.id,
+        quantity: item.quantity,
+        price: item.products.price
+      }))
+
+      const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
+      if (itemsError) throw itemsError
+
+      await supabase.from('cart_items').delete().eq('user_id', user.id)
+      setOrderSuccess({ id: orderData.id, items: [...cart], total: total })
+      await fetchCart()
+
+    } catch (error) {
+      console.error("Error:", error)
+      alert("Hubo un error al crear tu pedido.")
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const sendToWhatsapp = () => {
+    if (!orderSuccess) return
+    let message = `Hola! 🎀 Quiero reservar mi pedido #${orderSuccess.id}\n\n`
+    message += `📋 *Detalles:*\n`
+    orderSuccess.items.forEach(item => {
+      // Precio limpio
+      message += `▫️ ${item.quantity}x ${item.products.name} - ${formatPrice(item.products.price * item.quantity)}\n`
+    })
+    message += `\n💰 *Subtotal productos: ${formatPrice(orderSuccess.total)}*\n`
+    message += `📦 *Envío:* Por acordar\n` 
+    message += `\nQuedo pendiente para coordinar envío y pago. Gracias! ✨`
+    
+    const url = `https://wa.me/${PHONE_NUMBER}?text=${encodeURIComponent(message)}`
+    window.open(url, '_blank')
+  }
+
+  // --- VISTAS ---
+
   if (loading) return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
        <Loader2 className="animate-spin text-cherry-pink w-12 h-12" />
-       <p className="font-kawaii text-2xl text-gray-400">Cargando tu bolsa mágica...</p>
+       <p className="font-kawaii text-2xl text-gray-400">Cargando...</p>
     </div>
   )
 
-  // VISTA: VACÍO
+  if (orderSuccess) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4 animate-fade-in-up">
+        <div className="bg-green-100 p-6 rounded-full mb-6 shadow-sm animate-bounce-slow">
+          <CheckCircle size={80} className="text-green-500" strokeWidth={1.5} />
+        </div>
+        <h2 className="font-kawaii text-5xl text-cherry-dark mb-4">¡Pedido Creado! 🎉</h2>
+        <p className="font-body text-gray-500 mb-8 text-xl max-w-md">
+          Tu orden <b>#{orderSuccess.id}</b> ya está registrada.<br/>
+          Envíanos mensaje para coordinar pago y envío.
+        </p>
+        <button 
+          onClick={sendToWhatsapp}
+          className="bg-green-500 text-white px-8 py-4 rounded-full font-bold font-kawaii text-2xl hover:bg-green-600 transition hover:scale-105 shadow-xl shadow-green-200 flex items-center gap-3 animate-pulse cursor-pointer"
+        >
+          <MessageCircle size={28} /> Enviar WhatsApp
+        </button>
+        <Link to="/tienda" className="mt-8 text-gray-400 underline hover:text-cherry-red transition">Volver a la tienda</Link>
+      </div>
+    )
+  }
+
   if (cart.length === 0) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4 pt-20">
@@ -27,7 +104,6 @@ export default function Cart() {
           <ShoppingBag size={64} className="text-cherry-pink" />
         </div>
         <h2 className="font-kawaii text-5xl text-cherry-dark mb-4">Tu carrito está vacío ☁️</h2>
-        <p className="font-body text-gray-500 mb-8 text-lg">Parece que aún no has elegido tus aromas favoritos.</p>
         <Link to="/tienda" className="bg-cherry-red text-white px-8 py-3 rounded-full font-bold font-kawaii text-2xl hover:bg-pink-400 transition hover:scale-105 shadow-lg shadow-pink-200">
           Ir a la Tienda
         </Link>
@@ -35,93 +111,105 @@ export default function Cart() {
     )
   }
 
-  // VISTA: CON PRODUCTOS
   return (
     <div className="container mx-auto px-4 pt-32 pb-20 max-w-5xl min-h-screen">
-      <h1 className="font-kawaii text-5xl text-cherry-dark mb-10 text-center md:text-left">
-        Tu Bolsa Mágica ({cart.length}) 🛍️
+      <h1 className="font-kawaii text-5xl text-cherry-dark mb-10 text-center md:text-left flex items-center justify-center md:justify-start gap-3">
+        Tu Bolsa ({cart.length})
       </h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         
-        {/* LISTA DE ITEMS */}
+        {/* LISTA DE ITEMS (DISEÑO MÁS LIMPIO) */}
         <div className="lg:col-span-2 space-y-6">
           {cart.map((item) => (
-            <div key={item.id} className="flex gap-4 md:gap-6 bg-white p-4 rounded-[2rem] border border-pink-50 shadow-sm hover:shadow-md transition-all items-center">
+            // Quitamos bordes excesivos y sombras fuertes
+            <div key={item.id} className="flex flex-col sm:flex-row gap-5 bg-white p-4 rounded-[2rem] border border-gray-100 shadow-sm items-center">
               
-              {/* Imagen */}
-              <div className="w-24 h-24 md:w-32 md:h-32 flex-shrink-0 bg-gray-50 rounded-2xl overflow-hidden border border-pink-100">
+              {/* Imagen simple */}
+              <div className="w-full sm:w-28 h-28 flex-shrink-0 bg-gray-50 rounded-2xl overflow-hidden">
                 <img src={item.products.image_url} alt={item.products.name} className="w-full h-full object-cover" />
               </div>
 
-              {/* Info */}
-              <div className="flex-grow">
-                <h3 className="font-kawaii text-2xl md:text-3xl text-gray-800 truncate">{item.products.name}</h3>
-                <p className="font-body text-gray-400 text-sm mb-2 italic">
-                   {item.products.coleccion || "Clásica"}
+              {/* Info Limpia */}
+              <div className="flex-grow flex flex-col justify-center text-center sm:text-left w-full">
+                <h3 className="font-kawaii text-2xl text-gray-800 mb-1">{item.products.name}</h3>
+                <p className="font-body text-gray-400 text-sm mb-1 uppercase tracking-wider">
+                   {item.products.coleccion}
                 </p>
-                <p className="font-bold text-cherry-red text-lg">${item.products.price}</p>
+                {/* PRECIO AUTOMÁTICO */}
+                <p className="font-bold text-cherry-red text-xl">
+                    {formatPrice(item.products.price)}
+                </p>
               </div>
 
-              {/* Controles */}
-              <div className="flex flex-col items-end gap-3">
+              {/* Controles Minimalistas */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+                  <button 
+                    onClick={() => updateQuantity(item.id, item.quantity, -1)}
+                    disabled={item.quantity <= 1}
+                    className="text-gray-400 hover:text-cherry-red disabled:opacity-30 transition-colors cursor-pointer"
+                  >
+                    <Minus size={16} />
+                  </button>
+                  <span className="font-bold w-4 text-center text-gray-700">{item.quantity}</span>
+                  <button 
+                    onClick={() => updateQuantity(item.id, item.quantity, 1)}
+                    className="text-gray-400 hover:text-cherry-red transition-colors cursor-pointer"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+
                 <button 
                   onClick={() => removeFromCart(item.id)}
-                  className="text-gray-300 hover:text-red-400 p-2 hover:bg-red-50 rounded-full transition"
+                  className="p-2 text-gray-300 hover:text-red-400 transition-colors cursor-pointer"
+                  title="Eliminar"
                 >
                   <Trash2 size={20} />
                 </button>
-                
-                <div className="flex items-center gap-3 bg-cherry-bg px-3 py-1 rounded-full border border-pink-100">
-                  <button 
-                    onClick={() => updateQuantity(item.id, item.quantity, -1)}
-                    className="text-cherry-red hover:scale-125 transition disabled:opacity-30"
-                    disabled={item.quantity <= 1}
-                  >
-                    <Minus size={16} strokeWidth={3} />
-                  </button>
-                  <span className="font-bold font-body w-4 text-center text-cherry-dark">{item.quantity}</span>
-                  <button 
-                    onClick={() => updateQuantity(item.id, item.quantity, 1)}
-                    className="text-cherry-red hover:scale-125 transition"
-                  >
-                    <Plus size={16} strokeWidth={3} />
-                  </button>
-                </div>
               </div>
-
             </div>
           ))}
         </div>
 
         {/* RESUMEN DE PAGO */}
         <div className="lg:col-span-1">
-          <div className="bg-white p-8 rounded-[2.5rem] border-2 border-pink-100 shadow-xl shadow-pink-50 sticky top-24">
-            <h3 className="font-kawaii text-4xl text-cherry-dark mb-6">Resumen 🧾</h3>
+          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-lg sticky top-28">
+            <h3 className="font-kawaii text-3xl text-cherry-dark mb-6">Resumen</h3>
             
-            <div className="space-y-4 mb-8 font-body text-gray-600">
-              <div className="flex justify-between">
+            <div className="space-y-3 mb-8 font-body text-gray-600">
+              <div className="flex justify-between items-center">
                 <span>Subtotal</span>
-                <span>${total}</span>
+                <span className="font-bold text-gray-800">{formatPrice(total)}</span>
               </div>
-              <div className="flex justify-between text-green-500">
-                <span>Envío</span>
-                <span>Gratis ✨</span>
+              
+              {/* Lógica de Envío Actualizada */}
+              <div className="flex justify-between items-center text-gray-500 bg-gray-50 p-2 rounded-lg">
+                <span className="flex items-center gap-1 text-sm"><Package size={14}/> Envío</span>
+                <span className="font-bold text-sm text-cherry-pink">Por acordar</span>
               </div>
-              <div className="border-t border-dashed border-pink-200 pt-4 mt-4 flex justify-between items-center text-xl font-bold text-cherry-dark">
+
+              <div className="border-t border-dashed border-gray-200 pt-4 mt-4 flex justify-between items-center text-2xl font-kawaii text-cherry-dark">
                 <span>Total</span>
-                <span>${total}</span>
+                <span>{formatPrice(total)}</span>
               </div>
+              <p className="text-[10px] text-center text-gray-400">
+                 * El costo de envío se sumará al acordar la entrega.
+              </p>
             </div>
 
-            <button className="w-full bg-cherry-red text-white font-kawaii text-2xl py-4 rounded-2xl shadow-lg shadow-pink-200 hover:bg-pink-400 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2">
-              <span>Pagar Ahora</span>
-              <ArrowRight size={24} />
+            <button 
+              onClick={handleCreateOrder}
+              disabled={isProcessing}
+              className="w-full bg-cherry-red text-white font-kawaii text-xl py-4 rounded-2xl shadow-lg shadow-pink-200 hover:bg-pink-500 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {isProcessing ? (
+                <> <Loader2 className="animate-spin" /> Procesando... </>
+              ) : (
+                <> <span>Confirmar Reserva</span> <ArrowRight size={24} /> </>
+              )}
             </button>
-            
-            <div className="mt-4 text-center">
-               <span className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full">🔒 Pago 100% Seguro</span>
-            </div>
           </div>
         </div>
 
