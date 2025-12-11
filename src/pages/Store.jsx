@@ -3,9 +3,10 @@ import ProductCard from '../components/ProductCard'
 import { Search, Filter, ArrowUpDown, Ghost, ChevronDown, Check } from 'lucide-react'
 import { useProductFilters } from '../hooks/useProductFilters'
 import { CATEGORIES, FRAGRANCES } from '../utils/constants'
-import Loader from '../components/ui/Loader' // <--- IMPORTAMOS TU LOADER
+import Loader from '../components/ui/Loader' 
+import Pagination from '../components/ui/Pagination' // <--- IMPORTANTE
 
-// --- COMPONENTE KAWAII DROPDOWN ---
+// --- COMPONENTE KAWAII DROPDOWN (Sin cambios, el que ya funciona) ---
 const KawaiiDropdown = ({ icon: Icon, value, options, onChange, placeholder, type = 'text' }) => {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef(null)
@@ -32,7 +33,6 @@ const KawaiiDropdown = ({ icon: Icon, value, options, onChange, placeholder, typ
 
   return (
     <div className="relative min-w-[220px]" ref={dropdownRef}>
-      {/* Botón Principal */}
       <button 
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -45,12 +45,10 @@ const KawaiiDropdown = ({ icon: Icon, value, options, onChange, placeholder, typ
         <ChevronDown size={16} strokeWidth={3} className={`text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180 text-cherry-pink' : ''}`} />
       </button>
 
-      {/* Icono Izquierda */}
       <div className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${isOpen ? 'text-cherry-red' : 'text-cherry-pink'}`}>
         <Icon size={20} />
       </div>
 
-      {/* LISTA DESPLEGABLE (Con z-index muy alto) */}
       {isOpen && (
         <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl border-2 border-pink-100 shadow-2xl overflow-hidden z-[100] animate-fade-in-down max-h-60 overflow-y-auto">
           {options.map((option, index) => {
@@ -62,7 +60,7 @@ const KawaiiDropdown = ({ icon: Icon, value, options, onChange, placeholder, typ
                 key={index}
                 type="button"
                 onClick={(e) => {
-                  e.stopPropagation() // Asegura que el click se registre
+                  e.stopPropagation()
                   onChange(optValue)
                   setIsOpen(false)
                 }}
@@ -81,15 +79,25 @@ const KawaiiDropdown = ({ icon: Icon, value, options, onChange, placeholder, typ
   )
 }
 
-// --- PÁGINA STORE ---
+// --- PÁGINA STORE PRINCIPAL ---
 
 export default function Store() {
-  const { products, loading, filters, updateFilter, clearFilters } = useProductFilters()
+  // AQUI AGREGAMOS: currentPage, totalPages, changePage
+  const { 
+    products, 
+    loading, 
+    filters, 
+    updateFilter, 
+    clearFilters, 
+    currentPage, 
+    totalPages, 
+    changePage 
+  } = useProductFilters()
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 relative z-0 -mt-24">
       
-      {/* HEADER ORIGINAL (El que te gusta) */}
+      {/* HEADER ORIGINAL */}
       <div className="bg-cherry-bg pt-40 pb-16 px-4 text-center rounded-b-[3rem] mb-12 relative overflow-hidden shadow-sm mx-4 md:mx-0">
         <div className="absolute top-0 left-0 w-64 h-64 bg-white opacity-40 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
         <h1 className="font-kawaii text-6xl text-cherry-dark mb-4 relative z-10">Nuestro Catálogo</h1>
@@ -116,7 +124,7 @@ export default function Store() {
 
       <div className="container mx-auto px-4 max-w-7xl">
         
-        {/* BARRA DE FILTROS (z-50 para estar encima de todo) */}
+        {/* BARRA DE FILTROS */}
         <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-pink-50 mb-10 relative z-50">
           <div className="flex flex-col xl:flex-row gap-8 justify-between items-center">
              
@@ -164,29 +172,34 @@ export default function Store() {
           </div>
         </div>
 
-        {/* RESULTADOS (z-0 para estar debajo de los filtros) */}
-       <div className="relative z-0 min-h-[400px]">
+        {/* RESULTADOS */}
+        <div className="relative z-0 min-h-[400px]">
           {loading ? (
-            <div className="absolute inset-0 bg-white/50 backdrop-blur-sm rounded-[3rem] border-2 border-pink-50 overflow-hidden flex items-center justify-center">
-               <Loader />
-            </div>
+             <div className="absolute inset-0 bg-white/50 backdrop-blur-sm rounded-[3rem] border-2 border-pink-50 overflow-hidden flex items-center justify-center">
+                <Loader />
+             </div>
           ) : products.length > 0 ? (
-            
-            // --- AQUÍ ESTÁ EL CAMBIO ---
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {products.map((product, index) => (
-                // Envolvemos en un div con la animación
-                // key={product.id} va aquí ahora
-                <div 
-                  key={product.id} 
-                  className="animate-fade-in-up"
-                  // Retraso escalonado: la primera tarda 0ms, la segunda 75ms, la tercera 150ms...
-                  style={{ animationDelay: `${index * 75}ms` }}
-                >
-                  <ProductCard product={product} />
-                </div>
-              ))}
-            </div>
+            // Fragmento (<>...</>) para agrupar Grid + Paginación
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                {products.map((product, index) => (
+                  <div 
+                    key={product.id} 
+                    className="animate-fade-in-up"
+                    style={{ animationDelay: `${index * 75}ms` }}
+                  >
+                    <ProductCard product={product} />
+                  </div>
+                ))}
+              </div>
+
+              {/* --- AQUI ESTÁ LA NUEVA PAGINACIÓN --- */}
+              <Pagination 
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={changePage}
+              />
+            </>
           ) : (
             <div className="text-center py-20 bg-white rounded-[3rem] border-2 border-dashed border-gray-200">
                <Ghost size={64} className="text-gray-300 mx-auto mb-4 animate-bounce-slow" />

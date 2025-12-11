@@ -57,7 +57,7 @@ export default function Favorites() {
                Mis Favoritos <Heart className="text-cherry-red fill-cherry-red animate-bounce" />
              </h1>
              <p className="font-body text-gray-500">
-               Tu colección personal de aromas mágicos. ✨
+               Tu colección personal de aromas mágicos. 
              </p>
           </div>
           

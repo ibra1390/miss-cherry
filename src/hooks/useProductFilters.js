@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../utils/supabase'
 
+// Define cuántas velas quieres por página
+const ITEMS_PER_PAGE = 8 
+
 export function useProductFilters() {
-  const [allProducts, setAllProducts] = useState([]) // Copia original de datos
-  const [filteredProducts, setFilteredProducts] = useState([]) // Copia filtrada para mostrar
+  const [allProducts, setAllProducts] = useState([]) 
+  const [filteredProducts, setFilteredProducts] = useState([]) 
   const [loading, setLoading] = useState(true)
 
-  // Estados de los filtros
+  // NUEVO: Estado para la paginación
+  const [currentPage, setCurrentPage] = useState(1)
+
   const [filters, setFilters] = useState({
     search: "",
     category: "Todas",
@@ -14,12 +19,10 @@ export function useProductFilters() {
     priceOrder: "default"
   })
 
-  // 1. Cargar datos al inicio
   useEffect(() => {
     fetchProducts()
   }, [])
 
-  // 2. Filtrar cada vez que cambien los datos o los filtros
   useEffect(() => {
     applyFilters()
   }, [filters, allProducts])
@@ -27,17 +30,11 @@ export function useProductFilters() {
   async function fetchProducts() {
     try {
       setLoading(true)
-
-      // --- TRUCO DEL TIEMPO (2 segundos de espera para el Loader) ---
       const dbPromise = supabase.from('products').select('*')
-      const timerPromise = new Promise(resolve => setTimeout(resolve, 2000))
-
-      // Esperamos a que AMBAS cosas terminen
+      const timerPromise = new Promise(resolve => setTimeout(resolve, 2000)) // Tu loader
       const [{ data, error }] = await Promise.all([dbPromise, timerPromise])
 
       if (error) throw error
-      
-      console.log("📦 Productos cargados:", data)
       
       setAllProducts(data || [])
       setFilteredProducts(data || []) 
@@ -48,40 +45,31 @@ export function useProductFilters() {
     }
   }
 
-  // Helper para normalizar texto (minusculas y sin espacios extra)
   const normalize = (text) => text ? text.toString().toLowerCase().trim() : ""
 
   const applyFilters = () => {
     let result = [...allProducts]
 
-    // A. Búsqueda por nombre
-    // 1. Búsqueda INTELIGENTE (Nombre, Fragancia o Colección)
+    // 1. Buscador Inteligente
     if (filters.search) {
       const term = normalize(filters.search)
-      
       result = result.filter(p => 
-        normalize(p.name).includes(term) ||       // ¿Está en el nombre?
-        normalize(p.fragancia).includes(term) ||  // O... ¿Está en la fragancia?
-        normalize(p.coleccion).includes(term)     // O... ¿Está en la colección?
+        normalize(p.name).includes(term) || 
+        normalize(p.fragancia).includes(term) || 
+        normalize(p.coleccion).includes(term)
       )
     }
-
-    // B. Categoría (Colección)
+    // 2. Categoría
     if (filters.category !== "Todas") {
       const catFilter = normalize(filters.category)
       result = result.filter(p => normalize(p.coleccion) === catFilter)
     }
-
-    // C. Fragancia
+    // 3. Fragancia
     if (filters.fragrance !== "Todas") {
       const fragFilter = normalize(filters.fragrance)
-      result = result.filter(p => {
-        const prodFragancia = normalize(p.fragancia)
-        return prodFragancia === fragFilter
-      })
+      result = result.filter(p => normalize(p.fragancia) === fragFilter)
     }
-
-    // D. Precio
+    // 4. Precio
     if (filters.priceOrder === 'asc') {
       result.sort((a, b) => a.price - b.price)
     } else if (filters.priceOrder === 'desc') {
@@ -89,30 +77,18 @@ export function useProductFilters() {
     }
 
     setFilteredProducts(result)
+    setCurrentPage(1) // <--- IMPORTANTE: Si filtran, volvemos a la pág 1
   }
 
- // --- FUNCIÓN ACTUALIZADA (LÓGICA DOBLE VÍA) ---
   const updateFilter = (key, value) => {
     setFilters(prev => {
       const newFilters = { ...prev, [key]: value }
-
-      // REGLA 1: Si cambio la FRAGANCIA, limpio la categoría
-      // (Para buscar "Cereza" en todo el catálogo)
-      if (key === 'fragrance' && value !== 'Todas') {
-        newFilters.category = "Todas"
-      }
-
-      // REGLA 2: Si cambio la CATEGORÍA, limpio la fragancia
-      // (Para ver todo "Navidad" sin importar a qué huela)
-      if (key === 'category' && value !== 'Todas') {
-        newFilters.fragrance = "Todas"
-      }
-
+      if (key === 'fragrance' && value !== 'Todas') newFilters.category = "Todas"
+      if (key === 'category' && value !== 'Todas') newFilters.fragrance = "Todas"
       return newFilters
     })
   }
 
-  // Resetear todo
   const clearFilters = () => {
     setFilters({
       search: "",
@@ -122,11 +98,32 @@ export function useProductFilters() {
     })
   }
 
+  // --- LÓGICA DE PAGINACIÓN ---
+  // Calculamos qué productos mostrar AHORA MISMO
+  const indexOfLastItem = currentPage * ITEMS_PER_PAGE
+  const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE
+  const currentProducts = filteredProducts.slice(indexOfFirstItem, indexOfLastItem)
+  
+  // Total de páginas
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE)
+
+  // Función para cambiar página
+  const changePage = (pageNumber) => {
+    setCurrentPage(pageNumber)
+    // Scroll suave hacia arriba de la lista
+    window.scrollTo({ top: 400, behavior: 'smooth' })
+  }
+
   return { 
-    products: filteredProducts, 
+    products: currentProducts, // Devolvemos SOLO los 8 de esta página
+    totalResults: filteredProducts.length, // Total real para saber si mostrar paginación
     loading, 
     filters, 
     updateFilter, 
-    clearFilters 
+    clearFilters,
+    // Cosas nuevas de paginación
+    currentPage,
+    totalPages,
+    changePage
   }
 }
