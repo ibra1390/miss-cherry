@@ -103,7 +103,7 @@ export default function Cart() {
         <div className="bg-pink-50 p-8 rounded-full mb-6 animate-float">
           <ShoppingBag size={64} className="text-cherry-pink" />
         </div>
-        <h2 className="font-kawaii text-5xl text-cherry-dark mb-4">Tu carrito está vacío ☁️</h2>
+        <h2 className="font-kawaii text-5xl text-cherry-dark mb-4">Tu carrito está vacío</h2>
         <Link to="/tienda" className="bg-cherry-red text-white px-8 py-3 rounded-full font-bold font-kawaii text-2xl hover:bg-pink-400 transition hover:scale-105 shadow-lg shadow-pink-200">
           Ir a la Tienda
         </Link>
