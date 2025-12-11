@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../utils/supabase'
 import { useToast } from '../context/ToastContext'
+import { formatPrice } from '../utils/format'
 
 export default function ProductCard({ product }) {
   const { addToCart, cart } = useCart() 
@@ -96,7 +97,7 @@ export default function ProductCard({ product }) {
         <button 
           onClick={handleToggleFavorite}
           disabled={favLoading}
-          className={`absolute top-4 right-4 p-2.5 rounded-full shadow-md transition-all duration-300 hover:scale-110 active:scale-95 z-20 ${
+          className={`absolute top-4 right-4 p-2.5 rounded-full shadow-md transition-all duration-300 hover:scale-110 active:scale-95 z-20 cursor-pointer ${
             isFavorite 
               ? 'bg-cherry-red text-white' 
               : 'bg-white/90 text-cherry-pink hover:bg-cherry-pink hover:text-white'
@@ -114,7 +115,7 @@ export default function ProductCard({ product }) {
         )}
 
         <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm font-kawaii text-xl text-cherry-dark flex items-center gap-1 z-20">
-           <span className="text-cherry-red text-sm">$</span>{product.price}
+           <span className="text-cherry-red text-sm">$</span>{formatPrice(product.price)}
         </div>
       </div>
 
@@ -143,7 +144,7 @@ export default function ProductCard({ product }) {
         <button 
         onClick={handleAdd}
         disabled={isAdding || !hasStock}
-        className={`w-full py-3 rounded-2xl font-bold transition-all duration-300 flex items-center justify-center gap-2 font-kawaii text-xl tracking-wide group/btn relative overflow-hidden
+        className={`w-full py-3 rounded-2xl font-bold transition-all duration-300 flex items-center justify-center gap-2 font-kawaii text-xl tracking-wide group/btn relative overflow-hidden cursor-pointer
             ${!hasStock 
             ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-2 border-gray-200' 
             : isAdding 

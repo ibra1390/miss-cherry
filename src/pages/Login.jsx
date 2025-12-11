@@ -58,7 +58,7 @@ export default function Login() {
             {isRegistering ? 'Únete al Club' : '¡Hola de nuevo!'}
           </h1>
           <p className="font-body text-gray-400">
-            {isRegistering ? 'Crea tu cuenta para guardar favoritos ✨' : 'Ingresa para ver tus pedidos 📦'}
+            {isRegistering ? 'Crea tu cuenta para guardar favoritos' : 'Ingresa para ver tus pedidos 📦'}
           </p>
         </div>
 
@@ -125,7 +125,7 @@ export default function Login() {
             {isRegistering ? '¿Ya tienes cuenta?' : '¿Eres nuevo por aquí?'}
             <button 
               onClick={() => setIsRegistering(!isRegistering)}
-              className="text-cherry-red font-bold ml-2 hover:underline hover:text-pink-600 transition decoration-wavy decoration-pink-300 underline-offset-4 cursor-pointer"
+              className="text-cherry-red font-bold ml-2 hover:text-pink-600 transition cursor-pointer"
             >
               {isRegistering ? 'Inicia Sesión' : 'Regístrate Gratis'}
             </button>

@@ -1,30 +1,103 @@
+import { useState, useRef, useEffect } from 'react'
 import ProductCard from '../components/ProductCard'
-import { Search, Filter, ArrowUpDown, Ghost } from 'lucide-react'
-// Importamos el hook y las constantes
+import { Search, Filter, ArrowUpDown, Ghost, ChevronDown, Check } from 'lucide-react'
 import { useProductFilters } from '../hooks/useProductFilters'
 import { CATEGORIES, FRAGRANCES } from '../utils/constants'
+import Loader from '../components/ui/Loader' // <--- IMPORTAMOS TU LOADER
+
+// --- COMPONENTE KAWAII DROPDOWN ---
+const KawaiiDropdown = ({ icon: Icon, value, options, onChange, placeholder, type = 'text' }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  const getLabel = (val) => {
+    if (type === 'price') {
+      if (val === 'default') return 'Precio: Normal'
+      if (val === 'asc') return 'Menor a Mayor $'
+      if (val === 'desc') return 'Mayor a Menor $$$'
+    }
+    if (value === "Todas" && placeholder) return placeholder
+    return val
+  }
+
+  return (
+    <div className="relative min-w-[220px]" ref={dropdownRef}>
+      {/* Botón Principal */}
+      <button 
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between pl-12 pr-4 py-3 rounded-2xl border-2 bg-white font-body font-bold transition-all shadow-sm
+          ${isOpen ? 'border-cherry-pink ring-4 ring-pink-100' : 'border-pink-100 hover:border-pink-200'}
+          text-gray-600 cursor-pointer
+        `}
+      >
+        <span className="truncate">{getLabel(value)}</span>
+        <ChevronDown size={16} strokeWidth={3} className={`text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180 text-cherry-pink' : ''}`} />
+      </button>
+
+      {/* Icono Izquierda */}
+      <div className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${isOpen ? 'text-cherry-red' : 'text-cherry-pink'}`}>
+        <Icon size={20} />
+      </div>
+
+      {/* LISTA DESPLEGABLE (Con z-index muy alto) */}
+      {isOpen && (
+        <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl border-2 border-pink-100 shadow-2xl overflow-hidden z-[100] animate-fade-in-down max-h-60 overflow-y-auto">
+          {options.map((option, index) => {
+            const optValue = typeof option === 'object' ? option.value : option
+            const optLabel = typeof option === 'object' ? option.label : option
+            
+            return (
+              <button
+                key={index}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation() // Asegura que el click se registre
+                  onChange(optValue)
+                  setIsOpen(false)
+                }}
+                className={`w-full text-left px-5 py-3 hover:bg-pink-50 transition-colors flex items-center justify-between group border-b border-pink-50 last:border-0 cursor-pointer
+                  ${value === optValue ? 'bg-pink-50 text-cherry-red font-bold' : 'text-gray-500'}
+                `}
+              >
+                <span>{optLabel}</span>
+                {value === optValue && <Check size={16} className="text-cherry-red" />}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- PÁGINA STORE ---
 
 export default function Store() {
-  // Usamos el hook para toda la lógica
   const { products, loading, filters, updateFilter, clearFilters } = useProductFilters()
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 relative z-0 -mt-24">
       
-      {/* --- HEADER ORIGINAL RESTAURADO (Con ajuste de padding superior) --- */}
-      <div className="bg-cherry-bg pt-40 pb-16 px-4 text-center rounded-b-[3rem] mb-12 relative overflow-hidden shadow-sm">
-        
-        {/* Círculo decorativo original */}
+      {/* HEADER ORIGINAL (El que te gusta) */}
+      <div className="bg-cherry-bg pt-40 pb-16 px-4 text-center rounded-b-[3rem] mb-12 relative overflow-hidden shadow-sm mx-4 md:mx-0">
         <div className="absolute top-0 left-0 w-64 h-64 bg-white opacity-40 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
-        
-        <h1 className="font-kawaii text-6xl text-cherry-dark mb-4 relative z-10">
-          Nuestro Catálogo 
-        </h1>
+        <h1 className="font-kawaii text-6xl text-cherry-dark mb-4 relative z-10">Nuestro Catálogo</h1>
         <p className="font-body text-gray-500 text-lg max-w-xl mx-auto relative z-10">
-          Explora todas nuestras creaciones. Usa los filtros para encontrar tu aroma ideal.
+          Explora todas nuestras creaciones. 
         </p>
 
-        {/* --- BARRA DE BÚSQUEDA  --- */}
+        {/* BARRA DE BÚSQUEDA */}
         <div className="max-w-md mx-auto mt-8 relative z-10">
           <div className="relative group">
             <div className="absolute left-5 top-1/2 -translate-y-1/2 text-cherry-pink pointer-events-none z-10 group-focus-within:text-cherry-red transition-colors">
@@ -32,7 +105,7 @@ export default function Store() {
             </div>
             <input 
               type="text" 
-              placeholder="¿Qué aroma buscas hoy?" 
+              placeholder="¿Qué fragancia buscas hoy?" 
               className="w-full pl-14 pr-6 py-4 rounded-full border-2 border-pink-100 focus:border-cherry-pink focus:outline-none font-body text-gray-600 shadow-sm transition-all focus:shadow-md bg-white/90 backdrop-blur-sm relative z-0"
               value={filters.search}
               onChange={(e) => updateFilter('search', e.target.value)}
@@ -43,17 +116,18 @@ export default function Store() {
 
       <div className="container mx-auto px-4 max-w-7xl">
         
-        {/* --- BARRA DE FILTROS (Esta sí la dejamos nueva porque está más completa) --- */}
-        <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-pink-50 mb-10 relative z-10">
+        {/* BARRA DE FILTROS (z-50 para estar encima de todo) */}
+        <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-pink-50 mb-10 relative z-50">
           <div className="flex flex-col xl:flex-row gap-8 justify-between items-center">
              
-             {/* A. Categorías (Botones) */}
+             {/* Categorías */}
              <div className="flex flex-wrap justify-center xl:justify-start gap-2">
                 {CATEGORIES.map(cat => (
                   <button
                     key={cat}
+                    type="button"
                     onClick={() => updateFilter('category', cat)}
-                    className={`px-5 py-2 rounded-full font-bold font-kawaii text-lg transition-all border-2 
+                    className={`px-5 py-2 rounded-full font-bold font-kawaii text-lg transition-all border-2 cursor-pointer
                       ${filters.category === cat 
                         ? 'bg-cherry-red text-white border-cherry-red shadow-lg shadow-pink-200 transform scale-105' 
                         : 'bg-gray-50 text-gray-400 border-transparent hover:border-pink-200 hover:text-cherry-red hover:bg-white'
@@ -64,62 +138,70 @@ export default function Store() {
                 ))}
              </div>
 
-             {/* B. Dropdowns (Fragancia y Precio) */}
+             {/* Dropdowns KAWAII */}
              <div className="flex flex-wrap gap-4 w-full xl:w-auto justify-center">
-                {/* Fragancia */}
-                <div className="relative min-w-[220px]">
-                   <div className="absolute left-4 top-3.5 text-cherry-pink pointer-events-none"><Filter size={20} /></div>
-                   <select 
-                      value={filters.fragrance}
-                      onChange={(e) => updateFilter('fragrance', e.target.value)}
-                      className="w-full pl-12 pr-8 py-3 rounded-2xl border-2 border-pink-100 bg-white text-gray-600 font-body font-bold focus:outline-none focus:border-cherry-pink cursor-pointer appearance-none hover:bg-pink-50 transition shadow-sm"
-                   >
-                      {FRAGRANCES.map(f => <option key={f} value={f}>{f === "Todas" ? "Todas las fragancias" : f}</option>)}
-                   </select>
-                </div>
-                {/* Precio */}
-                <div className="relative min-w-[200px]">
-                   <div className="absolute left-4 top-3.5 text-cherry-pink pointer-events-none"><ArrowUpDown size={20} /></div>
-                   <select 
-                      value={filters.priceOrder}
-                      onChange={(e) => updateFilter('priceOrder', e.target.value)}
-                      className="w-full pl-12 pr-8 py-3 rounded-2xl border-2 border-pink-100 bg-white text-gray-600 font-body font-bold focus:outline-none focus:border-cherry-pink cursor-pointer appearance-none hover:bg-pink-50 transition shadow-sm"
-                   >
-                      <option value="default">Precio: Normal</option>
-                      <option value="asc">Menor a Mayor $</option>
-                      <option value="desc">Mayor a Menor $$$</option>
-                   </select>
-                </div>
+                <KawaiiDropdown 
+                  icon={Filter}
+                  value={filters.fragrance}
+                  placeholder="Todas las fragancias"
+                  options={FRAGRANCES}
+                  onChange={(val) => updateFilter('fragrance', val)}
+                  type="fragrance"
+                />
+
+                <KawaiiDropdown 
+                  icon={ArrowUpDown}
+                  value={filters.priceOrder}
+                  type="price" 
+                  options={[
+                    { label: 'Precio: Normal', value: 'default' },
+                    { label: 'Menor a Mayor $', value: 'asc' },
+                    { label: 'Mayor a Menor $$$', value: 'desc' }
+                  ]}
+                  onChange={(val) => updateFilter('priceOrder', val)}
+                />
              </div>
           </div>
         </div>
 
-        {/* --- RESULTADOS (GRID) --- */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center h-80 gap-4 relative z-10">
-             <div className="animate-spin rounded-full h-14 w-14 border-4 border-t-cherry-red border-pink-100"></div>
-             <p className="font-kawaii text-2xl text-gray-400 animate-pulse">Buscando aromas...</p>
-          </div>
-        ) : products.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 relative z-10">
-            {products.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        ) : (
-          // Empty State
-          <div className="text-center py-20 bg-white rounded-[3rem] border-2 border-dashed border-gray-200 relative z-10">
-             <Ghost size={64} className="text-gray-300 mx-auto mb-4 animate-bounce-slow" />
-             <h3 className="font-kawaii text-3xl text-gray-400 mb-2">Ups, no encontramos nada</h3>
-             <p className="text-gray-400 mb-6 font-body">Intenta cambiar los filtros o busca otro nombre.</p>
-             <button 
-               onClick={clearFilters}
-               className="text-cherry-red font-bold underline hover:text-pink-500 decoration-wavy decoration-2 underline-offset-4"
-             >
-               Limpiar todos los filtros
-             </button>
-          </div>
-        )}
+        {/* RESULTADOS (z-0 para estar debajo de los filtros) */}
+       <div className="relative z-0 min-h-[400px]">
+          {loading ? (
+            <div className="absolute inset-0 bg-white/50 backdrop-blur-sm rounded-[3rem] border-2 border-pink-50 overflow-hidden flex items-center justify-center">
+               <Loader />
+            </div>
+          ) : products.length > 0 ? (
+            
+            // --- AQUÍ ESTÁ EL CAMBIO ---
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {products.map((product, index) => (
+                // Envolvemos en un div con la animación
+                // key={product.id} va aquí ahora
+                <div 
+                  key={product.id} 
+                  className="animate-fade-in-up"
+                  // Retraso escalonado: la primera tarda 0ms, la segunda 75ms, la tercera 150ms...
+                  style={{ animationDelay: `${index * 75}ms` }}
+                >
+                  <ProductCard product={product} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 bg-white rounded-[3rem] border-2 border-dashed border-gray-200">
+               <Ghost size={64} className="text-gray-300 mx-auto mb-4 animate-bounce-slow" />
+               <h3 className="font-kawaii text-3xl text-gray-400 mb-2">Ups, no encontramos nada</h3>
+               <p className="text-gray-400 mb-6 font-body">Intenta cambiar los filtros o busca otro nombre.</p>
+               <button 
+                 type="button"
+                 onClick={clearFilters}
+                 className="text-cherry-red font-bold hover:text-pink-500 cursor-pointer"
+               >
+                 Limpiar todos los filtros
+               </button>
+            </div>
+          )}
+        </div>
 
       </div>
     </div>

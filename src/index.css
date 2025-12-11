@@ -58,3 +58,22 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-cherry-red); /* Se pone rosa fuerte */
 }
+
+
+@layer utilities {
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 30px, 0); /* Empieza 30px abajo */
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0); /* Termina en su lugar */
+    }
+  }
+
+  .animate-fade-in-up {
+    /* Nombre | duración | función de tiempo | modo de relleno */
+    animation: fadeInUp 0.5s ease-out both;
+  }
+}

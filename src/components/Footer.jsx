@@ -118,7 +118,7 @@ export default function Footer() {
                   placeholder="Tu correo..." 
                   className="w-full bg-transparent px-4 py-2 text-sm text-cherry-dark outline-none placeholder:text-cherry-pink/50 font-body"
                 />
-                <button className="bg-cherry-red text-white rounded-full p-2 hover:bg-cherry-pink transition-colors shadow-sm">
+                <button className="bg-cherry-red text-white rounded-full p-2 hover:bg-cherry-pink transition-colors shadow-sm cursor-pointer">
                   <Send size={18} />
                 </button>
              </div>
