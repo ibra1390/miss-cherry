@@ -9,7 +9,7 @@ export function useProductFilters() {
   const [filteredProducts, setFilteredProducts] = useState([]) 
   const [loading, setLoading] = useState(true)
 
-  // NUEVO: Estado para la paginación
+  // Estado para la paginación
   const [currentPage, setCurrentPage] = useState(1)
 
   const [filters, setFilters] = useState({
@@ -19,13 +19,32 @@ export function useProductFilters() {
     priceOrder: "default"
   })
 
+  function shuffleArray(array) {
+    let currentIndex = array.length, randomIndex;
+    while (currentIndex !== 0) {
+      randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex--;
+      [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+    }
+    return array;
+  }
+
+  // Carga inicial
   useEffect(() => {
     fetchProducts()
   }, [])
 
+  // Filtrado
   useEffect(() => {
     applyFilters()
   }, [filters, allProducts])
+
+  // Este bloque detecta cuando cambia la página y hace el scroll automático
+  useEffect(() => {
+    if (filteredProducts.length > 0) {
+      window.scrollTo({ top: 400, behavior: 'smooth' })
+    }
+  }, [currentPage])
 
   async function fetchProducts() {
     try {
@@ -36,8 +55,10 @@ export function useProductFilters() {
 
       if (error) throw error
       
-      setAllProducts(data || [])
-      setFilteredProducts(data || []) 
+      const shuffledData = data ? shuffleArray([...data]) : []
+      
+      setAllProducts(shuffledData)
+      setFilteredProducts(shuffledData)
     } catch (error) {
       console.error('Error:', error)
     } finally {
@@ -110,8 +131,6 @@ export function useProductFilters() {
   // Función para cambiar página
   const changePage = (pageNumber) => {
     setCurrentPage(pageNumber)
-    // Scroll suave hacia arriba de la lista
-    window.scrollTo({ top: 400, behavior: 'smooth' })
   }
 
   return { 
@@ -121,7 +140,6 @@ export function useProductFilters() {
     filters, 
     updateFilter, 
     clearFilters,
-    // Cosas nuevas de paginación
     currentPage,
     totalPages,
     changePage
