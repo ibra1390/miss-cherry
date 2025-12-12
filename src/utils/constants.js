@@ -1,10 +1,10 @@
 export const CATEGORIES = [
   "Todas", 
   "Postres", 
-  "Suculentas", 
+  "Natural", 
   "Navidad", 
   "Halloween", 
-  "San Valentín"
+  "San Valentin"
 ]
 
 export const FRAGRANCES = [

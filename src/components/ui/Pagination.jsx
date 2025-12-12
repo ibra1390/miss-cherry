@@ -14,7 +14,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
       <button 
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="p-2 rounded-full border-2 border-pink-100 text-cherry-pink hover:bg-pink-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+        className="p-2 rounded-full border-2 border-pink-100 text-cherry-pink hover:bg-pink-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer"
       >
         <ChevronLeft size={24} strokeWidth={3} />
       </button>
@@ -25,7 +25,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
           <button
             key={number}
             onClick={() => onPageChange(number)}
-            className={`w-10 h-10 rounded-full font-bold font-kawaii text-lg transition-all shadow-sm
+            className={`w-10 h-10 rounded-full font-bold font-kawaii text-lg transition-all shadow-sm cursor-pointer
               ${currentPage === number 
                 ? 'bg-cherry-red text-white scale-110 shadow-pink-200 shadow-md' 
                 : 'bg-white text-gray-400 border-2 border-transparent hover:border-pink-100'
@@ -41,7 +41,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
       <button 
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="p-2 rounded-full border-2 border-pink-100 text-cherry-pink hover:bg-pink-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+        className="p-2 rounded-full border-2 border-pink-100 text-cherry-pink hover:bg-pink-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer"
       >
         <ChevronRight size={24} strokeWidth={3} />
       </button>
